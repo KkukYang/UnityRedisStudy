@@ -33,24 +33,51 @@ public class RedisTest : MonoBehaviour
     private void Start()
     {
         redis = new Redis();
-        if (redis.Init(RedisIP_Num, PortNum, delegate
-        {
-            while (GetDataLoop)
+        var initResult = redis.Init(RedisIP_Num, PortNum,
+            delegate
             {
-                GetData();
-                Thread.Sleep(ThreadDelay);
+                while (GetDataLoop)
+                {
+                    GetData();
+                    Thread.Sleep(ThreadDelay);
 
-            }
-        }))
+                }
+            });
+
+        if (initResult)
         {
             Debug.Log("connect");
+            Subscribe(redis);
+
         }
         else
         {
             Debug.Log("Non_connect");
         }
+    }
 
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.A))
+        {
+            PublishTest(redis, "yang", $"hello {DateTime.Now}");
+        }
+    }
 
+    private void Subscribe(Redis client)
+    {
+        client.SubscribeEvent("yang",
+            (channel, value) =>
+            {
+                Debug.Log($"channel: {channel}");
+                Debug.Log($"value: {value}");
+            });
+    }
+
+    private void PublishTest(Redis client, string channel, string message)
+    {
+        Debug.Log($"PublishTest: {channel} / {message}");
+        client.PublishEvent(channel, message);
     }
 
     private void OnApplicationQuit()
@@ -192,9 +219,14 @@ public class Redis
         this.DB.HashDelete(key, field);
     }
 
-    public void Meseage(string Channel, string Meseage)
+    public void PublishEvent(string channel, string meseage)
     {
-        sub.Publish(Channel, Meseage);
+        sub.Publish(channel, meseage);
+    }
+
+    public void SubscribeEvent(string channel, Action<RedisChannel, RedisValue> action)
+    {
+        sub.Subscribe(channel, action);
     }
 
 }
